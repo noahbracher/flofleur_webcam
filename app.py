@@ -1,17 +1,44 @@
-from flask import Flask, redirect
+from flask import Flask, redirect, abort
 import requests
-from bs4 import BeautifulSoup
+from datetime import datetime
 
 app = Flask(__name__)
 
+def get_latest_image_url():
+    url = "https://www.webcam-4insiders.com/services/slideshow.php"
+
+    today = datetime.now().strftime("%Y%m%d")  # z.B. "20250528"
+
+    payload = {
+        "mode": "getPictureList",
+        "id": "17210",
+        "pictable": "7",
+        "displaysec": "false",
+        "searchdate": today,
+    }
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://www.webcam-4insiders.com/de/Wetter-Köniz-Webcam/17210-Webcam-Köniz-Wetter.php",
+        "User-Agent": "Mozilla/5.0",
+    }
+
+    try:
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if not data:
+            return None
+        latest_filename = list(data.values())[-1]
+        full_url = f"https://www.webcam-4insiders.com/pictures/original/{latest_filename}"
+        return full_url
+    except Exception as e:
+        print(f"Fehler beim Abrufen des Bildes: {e}")
+        return None
+
 @app.route("/")
-def latest_image():
-    url = "https://www.webcam-4insiders.com/de/Wetter-Köniz-Webcam/17210-Webcam-Köniz-Wetter.php"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
-    image_tag = soup.select_one("img[src*='/pictures/original/7-17210-']")
-    if image_tag:
-        print(image_tag)
-        return redirect("https://www.webcam-4insiders.com" + image_tag["src"])
-    return "No image found", 404
+def redirect_to_latest_image():
+    url = get_latest_image_url()
+    if not url:
+        return abort(404, description="Kein Bild gefunden.")
+    return redirect(url)
