@@ -12,5 +12,6 @@ def latest_image():
     soup = BeautifulSoup(res.text, "html.parser")
     image_tag = soup.select_one("img[src*='/pictures/original/7-17210-']")
     if image_tag:
+        print(image_tag)
         return redirect("https://www.webcam-4insiders.com" + image_tag["src"])
     return "No image found", 404
