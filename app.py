@@ -12,8 +12,8 @@ def get_latest_image_url():
         "User-Agent": "Mozilla/5.0",
     }
 
-    for days_ago in range(0, 3):  # Heute bis 2 Tage zurück
-        date = (datetime.now() - timedelta(days=days_ago)).strftime("%Y%m%d")
+    for days_back in range(0, 3):  # Heute, gestern, vorgestern
+        date = (datetime.now() - timedelta(days=days_back)).strftime("%Y%m%d")
         payload = {
             "mode": "getPictureList",
             "id": "17210",
@@ -27,24 +27,21 @@ def get_latest_image_url():
             response.raise_for_status()
             data = response.json()
 
-            if isinstance(data, list) and data:
-                latest_filename = data[-1]  # neustes Bild
-                image_url = f"https://www.webcam-4insiders.com/pictures/original/{latest_filename}"
-                return image_url
-
+            if isinstance(data, dict) and data:
+                latest_path = list(data.values())[-1]
+                full_url = f"https://www.webcam-4insiders.com/pictures/original/{latest_path}"
+                print(f"[{date}] Bild gefunden: {full_url}")
+                return full_url
+            else:
+                print(f"[{date}] Kein Bild gefunden")
         except Exception as e:
-            print(f"Fehler beim Abrufen für {date}: {e}")
+            print(f"[{date}] Fehler beim Abrufen: {e}")
 
     return None
 
-@app.route('/')
-@app.route('/latest')
+@app.route("/")
 def redirect_to_latest_image():
-    image_url = get_latest_image_url()
-    if image_url:
-        return redirect(image_url, code=302)
-    else:
-        abort(404, description="Kein Bild gefunden in den letzten 3 Tagen.")
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    url = get_latest_image_url()
+    if not url:
+        return abort(404, description="Kein Bild gefunden.")
+    return redirect(url)
